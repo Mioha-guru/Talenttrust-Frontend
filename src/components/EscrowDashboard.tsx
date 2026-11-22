@@ -48,6 +48,7 @@ import {
 import { ViewFilterControl } from "./ViewFilterControl";
 import { RoleChip } from "./RoleChip";
 import { getAddress } from "@/lib/stellar/freighter";
+import { useOptionalWallet } from "@/components/wallet/WalletProvider";
 import type { ViewFilter } from "@/lib/api";
 
 /** Coerce any string from the URL into a valid ViewFilter, defaulting to "all". */
@@ -98,16 +99,19 @@ export function EscrowDashboard() {
   const query = useMemo(() => parseQuery(searchParams), [searchParams]);
   // "My escrows": All / As client / As freelancer, persisted as ?view=
   const view = toViewFilter(searchParams.get("view"));
-  const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  const wallet = useOptionalWallet();
+  const [fallbackAddress, setFallbackAddress] = useState<string | null>(null);
   useEffect(() => {
+    if (wallet) return;
     let active = true;
     getAddress()
-      .then((address) => active && setWalletAddress(address || null))
-      .catch(() => active && setWalletAddress(null));
+      .then((address) => active && setFallbackAddress(address || null))
+      .catch(() => active && setFallbackAddress(null));
     return () => {
       active = false;
     };
-  }, []);
+  }, [wallet]);
+  const walletAddress = wallet ? wallet.address : fallbackAddress;
   // Role views only apply once a wallet is connected.
   const roleView: ViewFilter = walletAddress ? view : "all";
   // Only refetch when the server-side filter actually changes.
